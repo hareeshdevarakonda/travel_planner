@@ -267,14 +267,4 @@ git push origin feature/your-feature
 
 ---
 
-## 🔐 Future Improvements
-
-- JWT Authentication
-- Role-Based Access Control
-- Google Drive Integration
-- Alembic Migrations
-- CI/CD Pipeline
-- Production Docker Setup
-
----
 
