@@ -23,10 +23,10 @@ const ForgotPassword = () => {
           <div className="mb-8">
             <Link 
               to="/login" 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-white bg-[#041E23] hover:bg-[#062c33] transition-all shadow-sm group text-sm"
+              className="inline-flex items-center  hover:text-amber-400 gap-2 px-5 py-3 rounded-xl font-bold text-white bg-[#041E23] hover:bg-[#062c33] transition-all shadow-sm group text-sm"
             >
-              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-              Back to Login
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform " />
+             Back to Login  
             </Link>
           </div>
 
@@ -68,7 +68,7 @@ const ForgotPassword = () => {
 
             <button
               type="submit"
-              className="w-full py-4 rounded-xl font-bold text-white bg-[#041E23] hover:bg-[#062c33] transition-all flex items-center justify-center gap-2 group shadow-lg shadow-[#041E23]/10"
+              className="w-full py-4 rounded-xl font-bold text-white bg-[#041E23] hover:bg-[#062c33] transition-all flex items-center justify-center gap-2 group shadow-lg shadow-[#041E23]/10 hover:text-amber-400"
             >
               Send Reset Link
               <Send size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -86,3 +86,8 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
+
+
+
+
+

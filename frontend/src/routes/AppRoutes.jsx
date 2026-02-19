@@ -1,42 +1,34 @@
+
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 
-// local routes
-import HomePage from "../pages/Home/home";
-import ProtectedRoute from "../routes/ProtectedRoutes";
-import SignIn from "../pages/auth/SignIn.jsx";
-// Import your new components (adjust paths as necessary)
-import ForgotPassword from "@/pages/auth/forgot-password/forgot-pass"; 
-// import ResetPassword from "@/pages/auth/ResetPassword"; 
 
+import homeRoutes from "./HomeRoutes";
+import ProtectedRoutes from "./ProtectedRoutes";
+import authRoutes from "./loginRoutes";
 const router = createBrowserRouter([
-  {
-    path: "/login",
-    element: <SignIn />,
-  },
-  {
-    path: "/forgot-password",
-    element: <ForgotPassword />,
-  },
-  // {
-  //   // This is the page where users land after clicking the link in their email
-  //   path: "/reset-password/:token", 
-  //   element: <ResetPassword />,
-  // },
+  // Root redirect
   {
     path: "/",
     element: <Navigate to="/login" replace />,
   },
-  {
-    path: "/home",
-    element: (
-      <ProtectedRoute>
-        <HomePage />
-      </ProtectedRoute>
-    ),
-  },
+
+  // Public authentication routes
+  authRoutes,
+
+  // Private application routes (Dashboard layout)
+  ProtectedRoutes,
+  homeRoutes,
+  // Global 404 page
   {
     path: "*",
-    element: <div className="flex items-center justify-center h-screen font-bold text-2xl">404 - Not Found</div>,
+    element: (
+      <div className="flex flex-col items-center justify-center h-screen bg-white text-black">
+        <h1 className="text-9xl font-black italic">404</h1>
+        <div className="mt-6 p-5 border-[3px] border-black bg-[#FFD700] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] font-black uppercase tracking-widest">
+          Path Not Found
+        </div>
+      </div>
+    ),
   },
 ]);
 
