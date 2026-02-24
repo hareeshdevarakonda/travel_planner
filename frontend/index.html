@@ -1,4 +1,431 @@
 <!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Travel Planner - AI + Speech + Maps + Images</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 18px auto; padding: 0 12px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-top: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    textarea { width: 100%; min-height: 90px; padding: 10px; box-sizing: border-box; }
+    input, select { padding: 8px; min-width: 260px; }
+    button { padding: 10px 14px; cursor: pointer; }
+    pre { white-space: pre-wrap; background: #fafafa; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
+    #map { height: 460px; border-radius: 10px; margin-top: 10px; }
+    .imgs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .imgCard { width: 260px; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+    .imgCard img { width: 100%; display: block; }
+    .imgCard div { padding: 8px; font-size: 13px; }
+    .muted { color: #666; font-size: 12px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 980px) { .split { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h2>All-in-One Tester (FastAPI): Speech + Text + Maps + Images + Poster</h2>
+  <div class="muted">Backend should be running at http://127.0.0.1:8000</div>
+
+  <!-- AI CHAT -->
+  <div class="card">
+    <h3>1) AI Chat (Text + Speech + Voice Reply)</h3>
+
+    <div class="row">
+      <label>
+        <b>Language:</b><br/>
+        <select id="lang">
+          <option value="eng" selected>English</option>
+          <option value="hin">Hindi</option>
+          <option value="tel">Telugu</option>
+          <option value="tam">Tamil</option>
+          <option value="kan">Kannada</option>
+          <option value="mal">Malayalam</option>
+          <option value="mar">Marathi</option>
+          <option value="ben">Bengali</option>
+          <option value="guj">Gujarati</option>
+          <option value="pan">Punjabi</option>
+          <option value="urd">Urdu</option>
+        </select>
+      </label>
+
+      <button id="speakReplyBtn">🔊 Speak AI Reply</button>
+      <button id="stopSpeakBtn">🛑 Stop Voice</button>
+    </div>
+
+    <div class="split" style="margin-top:10px;">
+      <div>
+        <b>Text input:</b>
+        <textarea id="textInput" placeholder="Type your question..."></textarea>
+        <div class="row">
+          <button id="sendTextBtn">➡️ Send Text</button>
+          <button id="clearTextBtn">🧹 Clear</button>
+        </div>
+      </div>
+
+      <div>
+        <b>Speech input:</b>
+        <textarea id="speechText" placeholder="Speech transcript will appear here..."></textarea>
+        <div class="row">
+          <button id="recStartBtn">🎙 Start Recording</button>
+          <button id="recStopBtn" disabled>⏹ Stop</button>
+          <button id="sendSpeechBtn" disabled>➡️ Send Speech</button>
+        </div>
+      </div>
+    </div>
+
+    <b>AI Reply:</b>
+    <pre id="aiReply"></pre>
+  </div>
+
+  <!-- MAPS -->
+  <div class="card">
+    <h3>2) Maps (Place → Place) + Fullscreen + Start Navigation</h3>
+
+    <div class="row">
+      <label><b>Source:</b><br/><input id="source" value="Hyderabad" placeholder="Enter source place"/></label>
+      <label><b>Destination:</b><br/><input id="destination" value="Khammam" placeholder="Enter destination place"/></label>
+      <button id="routeBtn">🗺 Get Route</button>
+      <button id="fullscreenBtn">⛶ Fullscreen Map</button>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <button id="startNavBtn">▶ Start Navigation</button>
+      <button id="stopNavBtn" disabled>⏹ Stop Navigation</button>
+      <div class="muted">Uses your live location (browser permission required). Prototype-level, not Google-level rerouting.</div>
+    </div>
+
+    <div id="map"></div>
+
+    <b>Route Info:</b>
+    <pre id="routeInfo"></pre>
+  </div>
+
+  <!-- IMAGES + POSTER -->
+  <div class="card">
+    <h3>3) Images + Poster (Displayed Inline)</h3>
+
+    <div class="row">
+      <input id="imgQuery" placeholder="Search images / poster topic" value="Charminar Hyderabad" />
+      <button id="imgSearchBtn">🖼 Fetch Images</button>
+    </div>
+
+    
+
+    
+    <div class="imgs" id="imgResults"></div>
+  </div>
+
+<script>
+  const BASE = "http://127.0.0.1:8000";
+
+  // ---------- Common voice helpers ----------
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0;
+    window.speechSynthesis.speak(u);
+  }
+  document.getElementById("stopSpeakBtn").onclick = () => {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+
+  // ---------- AI Chat ----------
+  const langEl = document.getElementById("lang");
+  const textInput = document.getElementById("textInput");
+  const speechText = document.getElementById("speechText");
+  const aiReply = document.getElementById("aiReply");
+
+  async function sendChat(message, context) {
+    aiReply.textContent = "Calling AI...";
+    try {
+      const r = await fetch(`${BASE}/ai/chat`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          message,
+          context
+        })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      aiReply.textContent = data.reply || JSON.stringify(data, null, 2);
+    } catch (e) {
+      aiReply.textContent = "Error: " + e.message;
+    }
+  }
+
+  document.getElementById("sendTextBtn").onclick = () => {
+    const msg = textInput.value.trim();
+    if (!msg) return alert("Enter text first.");
+    sendChat(msg, {
+      source: "text",
+      reply_language: langEl.value
+    });
+  };
+
+  document.getElementById("clearTextBtn").onclick = () => {
+    textInput.value = "";
+  };
+
+  document.getElementById("speakReplyBtn").onclick = () => {
+    const t = aiReply.textContent.trim();
+    if (!t) return;
+    speak(t);
+  };
+
+  // ---------- Speech Recording -> /ai/transcribe ----------
+  let mediaRecorder = null;
+  let chunks = [];
+
+  const recStartBtn = document.getElementById("recStartBtn");
+  const recStopBtn = document.getElementById("recStopBtn");
+  const sendSpeechBtn = document.getElementById("sendSpeechBtn");
+
+  recStartBtn.onclick = async () => {
+    chunks = [];
+    speechText.value = "";
+    sendSpeechBtn.disabled = true;
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
+      await transcribeBlob(blob);
+      sendSpeechBtn.disabled = false;
+    };
+
+    mediaRecorder.start();
+    recStartBtn.disabled = true;
+    recStopBtn.disabled = false;
+  };
+
+  recStopBtn.onclick = () => {
+    if (mediaRecorder) mediaRecorder.stop();
+    recStartBtn.disabled = false;
+    recStopBtn.disabled = true;
+  };
+
+  async function transcribeBlob(blob) {
+    speechText.value = "Transcribing...";
+    try {
+      const fd = new FormData();
+      fd.append("audio", blob, "speech.webm");
+      fd.append("language", langEl.value);
+
+      const r = await fetch(`${BASE}/ai/transcribe`, { method: "POST", body: fd });
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      speechText.value = data.text || "";
+    } catch (e) {
+      speechText.value = "Transcribe error: " + e.message;
+    }
+  }
+
+  sendSpeechBtn.onclick = async () => {
+    const msg = speechText.value.trim();
+    if (!msg) return alert("No transcript available.");
+    sendChat(msg, {
+      source: "speech",
+      stt_language: langEl.value,
+      reply_language: langEl.value
+    });
+  };
+
+  // ---------- MAPS ----------
+  const routeInfo = document.getElementById("routeInfo");
+
+  const map = L.map('map').setView([17.3850, 78.4867], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  let routeLayer = null;
+  let srcMarker = null;
+  let dstMarker = null;
+
+  // navigation state
+  let navSteps = [];
+  let nextStepIndex = 0;
+  let watchId = null;
+  let liveMarker = null;
+
+  function formatInstruction(step) {
+    const m = step.maneuver || {};
+    const name = (step.name && step.name.trim()) ? step.name : "the road";
+    const type = m.type || "continue";
+    const mod = m.modifier ? ` ${m.modifier}` : "";
+
+    if (type === "depart") return `Start and head${mod} on ${name}`;
+    if (type === "arrive") return `Arrive at destination`;
+    if (type === "roundabout") return `Enter roundabout and take exit${m.exit ? " " + m.exit : ""} to ${name}`;
+    if (type === "merge") return `Merge${mod} onto ${name}`;
+    if (type === "fork") return `Take the fork${mod} onto ${name}`;
+    if (type === "continue") return `Continue${mod} on ${name}`;
+    return `${type}${mod} onto ${name}`;
+  }
+
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const toRad = x => x * Math.PI / 180;
+    const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  async function getRoute(source, destination) {
+    routeInfo.textContent = "Fetching route...";
+    const url = `${BASE}/maps/route?source=${encodeURIComponent(source)}&destination=${encodeURIComponent(destination)}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    return await r.json();
+  }
+
+  document.getElementById("routeBtn").onclick = async () => {
+    try {
+      const source = document.getElementById("source").value.trim();
+      const destination = document.getElementById("destination").value.trim();
+      if (!source || !destination) return alert("Enter both source and destination.");
+
+      const data = await getRoute(source, destination);
+
+      // store steps for navigation
+      navSteps = data.legs?.[0]?.steps || [];
+      nextStepIndex = 0;
+
+      // markers
+      const src = data.source, dst = data.destination;
+      if (srcMarker) map.removeLayer(srcMarker);
+      if (dstMarker) map.removeLayer(dstMarker);
+      srcMarker = L.marker([src.lat, src.lon]).addTo(map).bindPopup("Source: " + src.name);
+      dstMarker = L.marker([dst.lat, dst.lon]).addTo(map).bindPopup("Destination: " + dst.name);
+
+      // route line
+      if (routeLayer) map.removeLayer(routeLayer);
+      const coords = data.geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
+      routeLayer = L.polyline(coords).addTo(map);
+      map.fitBounds(routeLayer.getBounds());
+
+      const km = (data.distance_m / 1000).toFixed(2);
+      const min = (data.duration_s / 60).toFixed(1);
+
+      const steps = navSteps.slice(0, 8).map((s, i) =>
+        `${i+1}. ${formatInstruction(s)} (${Math.round(s.distance)} m)`
+      ).join("\n");
+
+      routeInfo.textContent =
+        `Source: ${src.name}\nDestination: ${dst.name}\nDistance: ${km} km\nDuration: ${min} min\n\nFirst steps:\n` +
+        (steps || "No steps found.");
+    } catch (e) {
+      routeInfo.textContent = "Route error: " + e.message;
+    }
+  };
+
+  // Fullscreen
+  document.getElementById("fullscreenBtn").onclick = async () => {
+    const mapDiv = document.getElementById("map");
+    try {
+      if (!document.fullscreenElement) {
+        await mapDiv.requestFullscreen();
+        setTimeout(() => map.invalidateSize(), 250);
+      } else {
+        await document.exitFullscreen();
+        setTimeout(() => map.invalidateSize(), 250);
+      }
+    } catch (e) {
+      alert("Fullscreen not available: " + e.message);
+    }
+  };
+
+  // Navigation (prototype)
+  document.getElementById("startNavBtn").onclick = () => {
+    if (!navSteps.length) return alert("Get a route first.");
+    if (!navigator.geolocation) return alert("Geolocation not supported.");
+
+    nextStepIndex = 0;
+
+    document.getElementById("startNavBtn").disabled = true;
+    document.getElementById("stopNavBtn").disabled = false;
+
+    speak("Navigation started.");
+
+    watchId = navigator.geolocation.watchPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      if (liveMarker) map.removeLayer(liveMarker);
+      liveMarker = L.circleMarker([lat, lon]).addTo(map);
+      map.setView([lat, lon], 15);
+
+      const step = navSteps[nextStepIndex];
+      if (!step || !step.maneuver || !step.maneuver.location) return;
+
+      const stepLon = step.maneuver.location[0];
+      const stepLat = step.maneuver.location[1];
+
+      const d = haversine(lat, lon, stepLat, stepLon);
+      if (d < 35) {
+        speak(formatInstruction(step));
+        nextStepIndex = Math.min(nextStepIndex + 1, navSteps.length);
+      }
+    }, (err) => {
+      alert("Location error: " + err.message);
+    }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+  };
+
+  document.getElementById("stopNavBtn").onclick = () => {
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    document.getElementById("startNavBtn").disabled = false;
+    document.getElementById("stopNavBtn").disabled = true;
+    speak("Navigation stopped.");
+  };
+
+
+
+    // ---------- IMAGES ----------
+  const imgResults = document.getElementById("imgResults");
+
+  document.getElementById("imgSearchBtn").onclick = async () => {
+    const q = document.getElementById("imgQuery").value.trim();
+    if (!q) return alert("Enter a query.");
+    imgResults.innerHTML = "Loading images...";
+
+    try {
+      const r = await fetch(`${BASE}/images/search?q=${encodeURIComponent(q)}&limit=8`);
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+
+      const items = data.results || [];
+      if (!items.length) {
+        imgResults.innerHTML = "<div class='muted'>No images found.</div>";
+        return;
+      }
+
+      imgResults.innerHTML = items.map(x => `
+        <div class="imgCard">
+          <img src="${x.data_url}" />
+          <div>${x.title || ""}</div>
+        </div>
+      `).join("");
+
+    } catch (e) {
+      imgResults.innerHTML = "<div class='muted'>Image error: " + e.message + "</div>";
+    }
+  };
+
+
+  
+</script>
+</body>
+</html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
