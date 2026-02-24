@@ -1,57 +1,117 @@
-import { createContext, useState, useEffect, useContext } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+} from "react";
+
+import { getMe } from "@/api/authApi";
 
 const AuthContext = createContext();
 
+/* =====================================================
+   AUTH PROVIDER
+===================================================== */
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true); // prevents route flicker
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Restore session on app start
+  /* --------------------------------------------------
+     RESTORE SESSION ON APP START
+  ---------------------------------------------------*/
   useEffect(() => {
     const storedToken =
       localStorage.getItem("authToken") ||
       sessionStorage.getItem("authToken");
 
-    if (storedToken) {
-      setToken(storedToken);
+    if (!storedToken) {
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    setToken(storedToken);
+
+    getMe()
+      .then((userData) => {
+        setUser(userData);
+      })
+      .catch(() => logout())
+      .finally(() => setLoading(false));
   }, []);
 
-  // ✅ Login (supports Remember Me)
-const login = (accessToken, rememberMe = false) => {
-  // ✅ clear old tokens first
-  localStorage.removeItem("authToken");
-  sessionStorage.removeItem("authToken");
+  /* --------------------------------------------------
+     LOGIN
+  ---------------------------------------------------*/
+  const login = async (
+    accessToken,
+    refreshToken,
+    rememberMe = false
+  ) => {
+    const storage = rememberMe
+      ? localStorage
+      : sessionStorage;
 
-  if (rememberMe) {
-    localStorage.setItem("authToken", accessToken);
-  } else {
-    sessionStorage.setItem("authToken", accessToken);
-  }
+    // remove only auth keys
+    localStorage.removeItem("authToken");
+    sessionStorage.removeItem("authToken");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("refreshToken");
 
-  setToken(accessToken);
-};
+    storage.setItem("authToken", accessToken);
+    storage.setItem("refreshToken", refreshToken);
 
+    setToken(accessToken);
 
-    
+    // ✅ immediately fetch user
+    try {
+      const userData = await getMe();
+      setUser(userData);
+    } catch {
+      logout();
+    }
+  };
 
-  // ✅ Logout
+  /* --------------------------------------------------
+     LOGOUT
+  ---------------------------------------------------*/
   const logout = () => {
     localStorage.removeItem("authToken");
     sessionStorage.removeItem("authToken");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("refreshToken");
+
     setToken(null);
+    setUser(null);
   };
 
+  /* --------------------------------------------------
+     DERIVED VALUES
+  ---------------------------------------------------*/
+  const role = user?.role || null;
+  const isAdmin = role === "admin";
+
   return (
-    <AuthContext.Provider value={{ token, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        role,
+        isAdmin,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-// ✅ Custom Hook
+/* =====================================================
+   HOOK
+===================================================== */
 export const useAuth = () => useContext(AuthContext);
 
 export default AuthContext;

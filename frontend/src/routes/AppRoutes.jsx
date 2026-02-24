@@ -5,11 +5,16 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import homeRoutes from "./HomeRoutes";
 import ProtectedRoutes from "./ProtectedRoutes";
 import authRoutes from "./loginRoutes";
+import AdminDashboard from "../pages/admin/admin-dashboard";
 const router = createBrowserRouter([
   // Root redirect
   {
     path: "/",
     element: <Navigate to="/login" replace />,
+  },
+  {
+    path: "/admin",
+    element: <AdminDashboard />,
   },
 
   // Public authentication routes

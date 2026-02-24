@@ -30,8 +30,8 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-3 px-6">
         <NavItem to="/home" icon={<Compass size={22} />} label="Explore" />
-        <NavItem to="/home/routes" icon={<Map size={22} />} label="My Routes" />
-        <NavItem to="/home/itineraries" icon={<Calendar size={22} />} label="Itineraries" />
+         <NavItem to="/home/myjourneys" icon={<Map size={22} />} label="My Itineraries" />
+        {/* <NavItem to="/home/trips" icon={<Calendar size={22} />} label="Itineraries" /> */} 
         <NavItem to="/home/flights" icon={<Plane size={22} />} label="Flights" />
       </nav>
 
