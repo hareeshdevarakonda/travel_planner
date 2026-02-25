@@ -13,7 +13,7 @@ from app.routers import users
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from auth import create_access_token, verify_token
+from app.auth import create_access_token, verify_token
 
 app = FastAPI()
 
@@ -78,7 +78,6 @@ app.include_router(images_router)    # /images/*
 # CORS (dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
