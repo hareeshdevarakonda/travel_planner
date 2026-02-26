@@ -17,73 +17,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/* ---------------- RESPONSE ---------------- */
-
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((p) =>
-    error ? p.reject(error) : p.resolve(token)
-  );
-  failedQueue = [];
-};
-
+/* ---------------- RESPONSE ----------------
+   Backend uses only access tokens.
+   There is NO /refresh endpoint.
+   On 401 (except login/register) clear token and redirect to /login.
+---------------------------------------------------------- */
 api.interceptors.response.use(
   (res) => res,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || "";
 
-  async (error) => {
-    const originalRequest = error.config;
-
-    // prevent loop
-    if (originalRequest.url.includes("/auth/login"))
-      return Promise.reject(error);
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken =
-          localStorage.getItem("refreshToken") ||
-          sessionStorage.getItem("refreshToken");
-
-        const res = await axios.post(
-          `${import.meta.env.VITE_API_URL}/refresh`,
-          { refresh_token: refreshToken }
-        );
-
-        const newToken = res.data.access_token;
-
-        const storage = localStorage.getItem("refreshToken")
-          ? localStorage
-          : sessionStorage;
-
-        storage.setItem("authToken", newToken);
-
-        processQueue(null, newToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
-
-        localStorage.clear();
-        sessionStorage.clear();
+    // Don't redirect for auth endpoints
+    if (
+      status === 401 &&
+      !url.includes("/auth/login") &&
+      !url.includes("/auth/register")
+    ) {
+      localStorage.removeItem("authToken");
+      sessionStorage.removeItem("authToken");
+      localStorage.removeItem("refreshToken");
+      sessionStorage.removeItem("refreshToken");
+      // avoid infinite loops
+      if (window.location.pathname !== "/login") {
         window.location.href = "/login";
-
-        return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
       }
     }
 

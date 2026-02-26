@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fetchRouteData } from '@/api/mapsAPI'; // Importing your verified API function
+import { fetchRouteData } from '@/api/mapsApi'; // Importing your verified API function
 import { Navigation, Loader2, Info } from 'lucide-react';
 
 // Helper to move the camera when a route is found

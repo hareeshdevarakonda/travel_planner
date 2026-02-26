@@ -1,6 +1,6 @@
 # ai_layer/assistant.py
 from typing import Dict, Any, Optional, List
-from ai_layer.llm_client import chat_completion
+from ai_layer.llm_client import groq_chat
 
 SYSTEM_PROMPT = """You are a travel planning assistant for a travel planner website.
 Be practical and specific. Ask at most 1-2 clarifying questions only if needed.
@@ -42,4 +42,4 @@ def _build_messages(user_message: str, context: Optional[Dict[str, Any]] = None)
 
 async def generate_reply(message: str, context: Optional[Dict[str, Any]] = None) -> str:
     messages = _build_messages(message, context)
-    return await chat_completion(messages)
+    return await groq_chat(messages)

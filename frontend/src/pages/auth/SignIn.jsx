@@ -37,7 +37,7 @@ const SignIn = () => {
       const data = await loginUser(username, password);
 
       // ✅ Save token using AuthContext
-      login(data.access_token, rememberMe);
+      login(data.access_token, null, rememberMe);
 
       // ✅ Remove login page from history
       navigate("/home", { replace: true });

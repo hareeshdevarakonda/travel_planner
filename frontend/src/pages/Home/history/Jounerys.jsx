@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom"; // Added for navigation
 import {
   fetchUserItineraries,
   deleteItinerary,
@@ -20,68 +21,60 @@ const normalizeJourneys = (data) => {
 
   return list.map((j) => ({
     ...j,
-    items: j.items || [], // ensures image resolver works
+    id: j.id ?? j.itinerary_id,
+    items: j.items || [], 
   }));
 };
 
 const JourneysContainer = () => {
   const [journeys, setJourneys] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // Hook for programmatic navigation
 
   /* ================= LOAD USER TRIPS ================= */
   useEffect(() => {
     let mounted = true;
-
     const loadData = async () => {
       try {
         setLoading(true);
-
         const data = await fetchUserItineraries();
-
-        if (mounted) {
-          setJourneys(normalizeJourneys(data));
-        }
+        if (mounted) setJourneys(normalizeJourneys(data));
       } catch (error) {
         console.error("Failed to load journeys:", error);
       } finally {
         if (mounted) setLoading(false);
       }
     };
-
     loadData();
-    return () => (mounted = false);
+    return () => { mounted = false; };
   }, []);
+
+  /* ================= VIEW (NAVIGATE TO TIMELINE) ================= */
+  const handleView = useCallback((trip) => {
+    const id = trip.id ?? trip.itinerary_id;
+    // We pass 'trip' in state so the timeline page has the name immediately
+    navigate(`/home/myjourneys/${id}`, { state: { trip } });
+  }, [navigate]);
 
   /* ================= CREATE ================= */
   const handleCreate = useCallback(async (tripData) => {
     try {
       const res = await createItinerary(tripData);
-
       const newTrip = res?.itinerary || res;
-
-      setJourneys((prev) => [
-        { ...newTrip, items: [] },
-        ...prev,
-      ]);
+      setJourneys((prev) => [{ ...newTrip, items: [] }, ...prev]);
     } catch (err) {
-      console.error(err);
-      alert("Error creating trip.");
+      alert(`Error creating trip: ${err}`);
     }
   }, []);
 
   /* ================= DELETE ================= */
   const handleDelete = useCallback(async (id) => {
     if (!window.confirm("Remove this expedition?")) return;
-
     try {
       await deleteItinerary(id);
-
-      setJourneys((prev) =>
-        prev.filter((t) => (t.id ?? t.itinerary_id) !== id)
-      );
+      setJourneys((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      console.error(err);
-      alert("Delete failed.");
+      alert(`Delete failed: ${err}`);
     }
   }, []);
 
@@ -89,17 +82,15 @@ const JourneysContainer = () => {
   const handleEdit = useCallback(async (id, updatedData) => {
     try {
       const updated = await updateItinerary(id, updatedData);
-
       setJourneys((prev) =>
         prev.map((t) =>
-          (t.id ?? t.itinerary_id) === id
-            ? { ...updated, items: updated.items || [] }
+          t.id === id
+            ? { ...updated, items: updated.items || t.items || [] }
             : t
         )
       );
     } catch (err) {
-      console.error(err);
-      alert("Update failed.");
+      alert(`Update failed: ${err}`);
     }
   }, []);
 
@@ -110,6 +101,7 @@ const JourneysContainer = () => {
       onDelete={handleDelete}
       onCreate={handleCreate}
       onEdit={handleEdit}
+      onView={handleView} // Successfully connecting the view button
     />
   );
 };

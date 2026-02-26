@@ -9,7 +9,7 @@ import torch
 import soundfile as sf
 from transformers import AutoProcessor, Wav2Vec2ForCTC
 
-from ai_layer.config import settings
+from ai_layer.config import MMS_MODEL
 
 # Lazy-loaded globals
 _processor = None
@@ -24,8 +24,8 @@ def _load_mms_base():
         return
 
     _device = "cuda" if torch.cuda.is_available() else "cpu"
-    _processor = AutoProcessor.from_pretrained(settings.MMS_MODEL)
-    _model = Wav2Vec2ForCTC.from_pretrained(settings.MMS_MODEL).to(_device)
+    _processor = AutoProcessor.from_pretrained(MMS_MODEL)
+    _model = Wav2Vec2ForCTC.from_pretrained(MMS_MODEL).to(_device)
     _model.eval()
 
 

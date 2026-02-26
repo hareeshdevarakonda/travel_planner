@@ -1,18 +1,17 @@
-# ai_layer/maps_api.py
 from fastapi import APIRouter, HTTPException
 import httpx
 
 router = APIRouter(prefix="/maps", tags=["Maps"])
 
-@router.get("/ping")
-def ping():
-    return {"ok": True, "msg": "maps router is loaded"}
-
 NOMINATIM_BASE = "https://nominatim.openstreetmap.org"
 OSRM_BASE = "https://router.project-osrm.org"
-HEADERS = {"User-Agent": "travel-planner-dev/1.0 (local testing)"}
+HEADERS = {"User-Agent": "travel-planner-dev/1.0"}
 
-async def geocode_place(q: str):
+@router.get("/ping")
+def ping():
+    return {"ok": True}
+
+async def geocode(q: str):
     params = {"q": q, "format": "jsonv2", "limit": 1}
     async with httpx.AsyncClient(timeout=30, headers=HEADERS) as client:
         r = await client.get(f"{NOMINATIM_BASE}/search", params=params)
@@ -20,21 +19,14 @@ async def geocode_place(q: str):
         data = r.json()
     if not data:
         raise HTTPException(status_code=404, detail=f"Place not found: {q}")
-    lat = float(data[0]["lat"])
-    lon = float(data[0]["lon"])
-    name = data[0].get("display_name", q)
-    return lat, lon, name
+    return float(data[0]["lat"]), float(data[0]["lon"]), data[0].get("display_name", q)
 
 @router.get("/route")
 async def route(source: str, destination: str):
-    src_lat, src_lon, src_name = await geocode_place(source)
-    dst_lat, dst_lon, dst_name = await geocode_place(destination)
+    s_lat, s_lon, s_name = await geocode(source)
+    d_lat, d_lon, d_name = await geocode(destination)
 
-    url = (
-        f"{OSRM_BASE}/route/v1/driving/"
-        f"{src_lon},{src_lat};{dst_lon},{dst_lat}"
-        f"?overview=full&geometries=geojson&steps=true"
-    )
+    url = f"{OSRM_BASE}/route/v1/driving/{s_lon},{s_lat};{d_lon},{d_lat}?overview=full&geometries=geojson&steps=true"
 
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(url)
@@ -46,8 +38,8 @@ async def route(source: str, destination: str):
 
     route0 = data["routes"][0]
     return {
-        "source": {"name": src_name, "lat": src_lat, "lon": src_lon},
-        "destination": {"name": dst_name, "lat": dst_lat, "lon": dst_lon},
+        "source": {"name": s_name, "lat": s_lat, "lon": s_lon},
+        "destination": {"name": d_name, "lat": d_lat, "lon": d_lon},
         "distance_m": route0["distance"],
         "duration_s": route0["duration"],
         "geometry": route0["geometry"],

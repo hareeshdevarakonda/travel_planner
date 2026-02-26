@@ -1,32 +1,15 @@
+// src/api/authApi.js
 import api from "./axios";
 
-export const loginUser = async (username, password) => {
-  // We take 'username' from your form, 
-  // but we label it 'email' for the backend
-  const response = await api.post("/auth/login", {
-    email: username, 
-    password: password,
-  });
-
-  return response.data;
+/** PUBLIC: Login */
+export const loginUser = async (email, password) => {
+  // backend expects JSON { email, password }
+  const response = await api.post("/auth/login", { email, password });
+  return response.data; // { access_token, token_type }
 };
 
-export const getProtectedData = async () => {
-  const response = await api.get("/protected");
-  return response.data;
-  print(response.data);
-};
-
-
-/* ✅ GET CURRENT USER */
+/** LOCKED: Get current user */
 export const getMe = async () => {
   const response = await api.get("/auth/me");
-  
-  
-
-
-
-
   return response.data;
-
 };

@@ -1,19 +1,17 @@
-import Itineraries from "@/pages/Home/iternaries/itenary";
-import JourneysContainer from "@/pages/Home/history/Jounerys";
+import JourneysContainer from "@/pages/Home/history/Jounerys"; 
+import ItineraryPage from "@/pages/Home/iternaries/ItineraryPage";
 
 const ItinerariesRoute = {
-  path: "myjourneys", // ✅ no slash
-
+  path: "myjourneys", 
   children: [
-    // ✅ lowercase
-
     {
-      index: true, // ✅ default child route
-      element: <JourneysContainer />, // ✅ show list on /home/myjourneys
+      index: true, 
+      element: <JourneysContainer />, 
     },
     {
-      path: ":id", // ✅ no slash
-      element: <Itineraries />,
+      path: ":id", 
+      // This is the dynamic route where :id matches the itinerary_id from your API
+      element: <ItineraryPage />, 
     },
   ],
 };

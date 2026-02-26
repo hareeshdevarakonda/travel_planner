@@ -1,27 +1,26 @@
-# ai_layer/llm_client.py
-from typing import List, Dict, Any, Optional
-from ai_layer.config import settings
+import json
+from groq import AsyncGroq
+from ai_layer.config import GROQ_API_KEY, GROQ_MODEL
 
-def _ensure_key():
-    if not settings.GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY is not set (check your .env)")
+_client = None
 
-async def chat_completion(
-    messages: List[Dict[str, Any]],
-    model: Optional[str] = None,
-    temperature: float = 0.7,
-) -> str:
-    _ensure_key()
+def _get_client():
+    global _client
+    if _client is None:
+        if not GROQ_API_KEY:
+            raise RuntimeError("GROQ_API_KEY is not set")
+        _client = AsyncGroq(api_key=GROQ_API_KEY)
+    return _client
 
-    # Imported here so backend doesn't crash if AI deps aren't installed yet
-    from groq import AsyncGroq
-
-    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
-
+async def groq_chat(messages, model: str = None, temperature: float = 0.4) -> str:
+    client = _get_client()
     resp = await client.chat.completions.create(
-        model=model or settings.GROQ_MODEL,
-        messages=messages,
+        model=model or GROQ_MODEL,
         temperature=temperature,
+        messages=messages,
     )
+    return (resp.choices[0].message.content or "").strip()
 
-    return resp.choices[0].message.content or ""
+async def groq_json(messages, model: str = None, temperature: float = 0.3) -> dict:
+    txt = await groq_chat(messages, model=model, temperature=temperature)
+    return json.loads(txt)

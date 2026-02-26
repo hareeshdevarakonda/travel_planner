@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   fetchPlacesByCity,
   addPlaceToItinerary,
-} from "@/api/searchApi";
+} from "@/api/searchAPI";
 
 import {
   filterPlaces,
